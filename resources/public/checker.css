@@ -1,0 +1,97 @@
+body {
+    background-color: #333333;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-y: hidden;
+}
+#radiator {
+    color: #ffff99;
+    background-color: #333333;
+    font-family: Verdana, sans-serif;
+    font-weight: bold;
+    font-size: 5.5em;
+}
+#configuration {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    text-align: right;
+}
+#configuration > a {
+    color: #555555;
+}
+#configuration > a:hover {
+    color: #ffffff;
+}
+div.target {
+    overflow: auto;
+    border: 1px solid #000000;
+    margin: 2px 2px 2px 5px;
+    padding: 1px;
+    cursor: pointer;
+    word-wrap: break-word;
+}
+div.target.GREEN {
+    color: #ffffff;
+    background-color: #00aa00;
+}
+div.target.BROKEN {
+    color: #ffffff;
+    background-color: #aa0000;
+}
+div.target.UNDER_INVESTIGATION {
+    color: #ffffff;
+    background-color: #f87217;
+}
+div.target.DISABLED {
+    color: #444444;
+    display: none;
+}
+div.progress-bar {
+    clear: right;
+    border: 1px solid #cccccc;
+    margin: 2px 5px 2px 5px;
+    padding: 1px;
+}
+div.progress-bar > div {
+    height: 12px;
+    background-color: #9de96f;
+}
+div.progress-bar > div.GREEN {
+    background-color: #9de96f;
+}
+div.progress-bar > div.BROKEN {
+    background-color: #ba3838;
+}
+div.progress-bar > div.UNKNOWN {
+    background-color: #ffff66;
+}
+
+li.result {
+    border-style: solid;
+    border-color: black;
+    border-width: 1px;    
+    display: block;
+    text-align: center;
+    padding: 5px;
+    margin-top: 5px;
+    margin-right: 5%;
+}
+
+li.fail{
+    background-color: red;
+}
+
+li.pass{
+    background-color: green;
+}
+
+li.untested{
+    background-color: yellow;
+}
+
+h1#title {
+    text-align: center;
+}
