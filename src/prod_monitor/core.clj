@@ -20,9 +20,9 @@
               :fail "red"})
 
 (def systems-to-check
-  (atom {:local "http://127.0.0.1" 
-         :bad "http://127.0.0.1/blah"
-         :another "http://127.0.0.1/blah"}) )
+  (atom {:local {:url "http://127.0.0.1"} 
+         :bad {:url "http://127.0.0.1/blah"}
+         :another {:url "http://127.0.0.1/blah"}}) )
 
 ;;(def systems-to-check
 ;;  {:local "http://127.0.0.1" (http-status 200)
@@ -31,13 +31,13 @@
 
 ;;(def systems-to-check {:local "http://localhost"})
 
-(defn check-url [[system-name url]]
+(defn check-url [[system-name {url :url}]]
   (let [response (client/get url {:throw-exceptions false :timout 1000})
         success (if (= 200 (-> response :status)) :pass :fail)]
     (SystemState. system-name, url, success, response)))
 
 (defn set-systems! [systems]
-  (reset! systems-to-check  systems)
+  (reset! systems-to-check systems)
   (reset! individual-results {})
   (reset! overall-status {}))
 
