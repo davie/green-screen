@@ -8,6 +8,7 @@
                  [ring-reload-modified "0.1.1"]
                  [hiccup "0.3.8"]
                  [noir "1.2.2" :exclusions [org.clojure/clojure]]
+                 [cheshire "4.0.0"]
                  ]
   :dev-dependencies [[lein-run "1.0.1-SNAPSHOT" ]]
   :main prod-monitor.core

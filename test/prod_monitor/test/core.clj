@@ -3,18 +3,18 @@
   (:require [noir.server :as noir])
   (:use [clojure.test]))
 
-(defn dummy-server [name result]
+(defn dummy-server [name result content]
   (ring.adapter.jetty/run-jetty
-   (fn [a]  {:status result :body "hi" })
+   (fn [a]  {:status result :body content })
    {:port 0 :join? false}))
 
 (defn check
   ([name result]
-     (check name result ""))
-  ([name result content]
-     ( let [server (dummy-server name result)
+     (check name result "" nil))
+  ([name result content pred]
+     ( let [server (dummy-server name result content)
             port (-> server .getConnectors first .getLocalPort)]
-       (set-systems! {name {:url (str "http://localhost:" port)}})
+       (set-systems! {name {:url (str "http://localhost:" port) :success-fn pred}})
        (println @systems-to-check)
        (check-status))))
 
@@ -38,22 +38,27 @@
   (is (= {:state :pass} @overall-status)))
 
 (deftest json-status-check
-  (check :green-json 200 "{\"status\" : \"success\", \"message\" : \"all is well\"}")
+  (check
+   :green-json 200
+   "{\"status\" : \"success\", \"message\" : \"all is well\"}"
+   (json-value-matches "status" "success"))
   (is (= [:green-json] (map :name (vals @individual-results))))
   (is (= {:state :pass} @overall-status)))
 
+
+(deftest json-status-check-red
+  (check :red-json 200
+         "{\"status\" : \"fail\", \"message\" : \"its hit the fan\"}"
+         (json-value-matches "status" "success"))
+  (is (= [:red-json] (map :name (vals @individual-results))))
+  (is (= {:state :fail} @overall-status)))
+
+;; also need to test failing to parse = error
 (comment
-  (deftest json-status-check-red
-   (check :red-json 200 "{\"status\" : \"fail\", \"message\" : \"its hit the fan\"}")
-   (is (= [:red-json] (map :name (vals @individual-results))))
-   (is (= {:state :fail} @overall-status)))
- 
-
- {
-  :key :success
-  :criteria (partial = "hi")
-  :fail-description :message
-  }
-
- (defn map-matcher [m path success-value]
-   (= (path m) "success-value")))
+  ; maybe something like this?
+  {
+   :key :success
+   :criteria (partial = "hi")
+   :fail-description :message
+   }
+)

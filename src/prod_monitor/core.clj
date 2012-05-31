@@ -5,6 +5,7 @@
   (:use hiccup.page-helpers)
   (:require [clj-http.client :as client])
   (:require [noir.server :as server])
+  (:require [cheshire.core :as cheshire])
   (:import java.util.concurrent.Executors)
   (:import java.util.concurrent.TimeUnit)
   (:gen-class :main true))
@@ -19,22 +20,32 @@
               :pass "green"
               :fail "red"})
 
-(def systems-to-check
-  (atom {:local {:url "http://127.0.0.1"} 
-         :bad {:url "http://127.0.0.1/blah"}
-         :another {:url "http://127.0.0.1/blah"}}) )
+(defn http-status [success-status]
+  (fn [status content] (= status success-status)))
 
-;;(def systems-to-check
-;;  {:local "http://127.0.0.1" (http-status 200)
-;;   :bad "http://127.0.0.1/blah" (json-with (= "pass" (-> % :a :b first)))
-;;   :another "http://127.0.0.1/blah"} (http-status 200))
+(defn json-value-matches [k v]
+  (println "k " k "v " v)
+  (fn [status content] (let [content-map (cheshire/parse-string content)
+                             val (get content-map k)]
+                         (println "content: " content " val: " val)
+                         (= (get content-map k) v))))
+
+(def systems-to-check
+  (atom {:local {:url "http://127.0.0.1" :success-fn (http-status 200)} 
+         :bad {:url "http://127.0.0.1/blah" :success-fn (http-status 200)} 
+         :another {:url "http://127.0.0.1/blah2" :success-fn (http-status 200)}}))
 
 ;;(def systems-to-check {:local "http://localhost"})
 
-(defn check-url [[system-name {url :url}]]
+(defn check-url [[system-name {url :url success-fn :success-fn} ]]
   (let [response (client/get url {:throw-exceptions false :timout 1000})
-        success (if (= 200 (-> response :status)) :pass :fail)]
-    (SystemState. system-name, url, success, response)))
+        pred (or success-fn (http-status 200))
+        success (if (pred (:status response) (:body response) ) :pass :fail)
+        ;;success (if (= 200 (-> response :status)) :pass :fail)
+        ]
+    (println "system name " system-name "fn " success-fn)
+    (println "response: \"" response "\" success: \"" success "\"")
+    (SystemState. system-name, url,  success, response)))
 
 (defn set-systems! [systems]
   (reset! systems-to-check systems)
@@ -90,8 +101,6 @@
 
 
 ;; TODO
-;; package as an executable jar
-;; handle json with success/fail embedded - maybe have a predicate
 ;; variable timeouts
 ;; shell commands
 ;; logging
@@ -99,9 +108,12 @@
 ;; make the web page pretty
 ;; push to web page?
 ;; think about transactions - now have two uncoordinated atoms
-;; test
 ;; sort out scheduling in the repl
-
+;;
+;; DONE
+;; package as an executable jar - uberjar
+;; test 
+;; handle json with success/fail embedded - maybe have a predicate
 
 ;; reading
 ;; http://www.ewernli.com/clojure-agents
