@@ -19,16 +19,10 @@
               :pass "green"
               :fail "red"})
 
-(defn http-status [n]
-  nil)
-
-(defn json-with [json]
-  nil)
-
 (def systems-to-check
-  {:local "http://127.0.0.1" 
-   :bad "http://127.0.0.1/blah"
-   :another "http://127.0.0.1/blah"} )
+  (atom {:local "http://127.0.0.1" 
+         :bad "http://127.0.0.1/blah"
+         :another "http://127.0.0.1/blah"}) )
 
 ;;(def systems-to-check
 ;;  {:local "http://127.0.0.1" (http-status 200)
@@ -42,8 +36,13 @@
         success (if (= 200 (-> response :status)) :pass :fail)]
     (SystemState. system-name, url, success, response)))
 
+(defn set-systems! [systems]
+  (reset! systems-to-check  systems)
+  (reset! individual-results {})
+  (reset! overall-status {}))
+
 (defn check-status []
-  (let [statuses (pmap check-url systems-to-check)
+  (let [statuses (pmap check-url @systems-to-check)
         stats-map (into {} (map (juxt :name identity) statuses))]
     (swap! individual-results conj stats-map)
     
@@ -77,7 +76,6 @@
   [:li {:class (str (name success) " result")} (str system-name " url: " url " passed? " success)])
 
 (defpage "/" []
-  ;;(check-status)
   (let [content
         (-> @overall-status :state colours)]
     (html
