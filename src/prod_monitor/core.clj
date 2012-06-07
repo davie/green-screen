@@ -6,6 +6,7 @@
   (:require [clj-http.client :as client])
   (:require [noir.server :as server])
   (:require [cheshire.core :as cheshire])
+  (:require [clj-ssh.ssh :as ssh])
   (:import java.util.concurrent.Executors)
   (:import java.util.concurrent.TimeUnit)
   (:gen-class :main true))
@@ -31,13 +32,15 @@
                          (= (get content-map k) v))))
 
 (def systems-to-check
-  (atom {:local {:url "http://127.0.0.1" :success-fn (http-status 200)} 
-         :bad {:url "http://127.0.0.1/blah" :success-fn (http-status 200)} 
-         :another {:url "http://127.0.0.1/blah2" :success-fn (http-status 200)}}))
+  (atom {:local {:type :http :url "http://127.0.0.1" :success-fn (http-status 200)} 
+         :bad {:type :http :url  "http://127.0.0.1/blah" :success-fn (http-status 200)} 
+         :another-ssh {:type :ssh :command "ls" :host "localhost" :success-fn (http-status 200)}
+         :fail-ssh {:type :ssh :command "lss" :host "localhost" :success-fn (http-status 200)}
+         }))
 
-;;(def systems-to-check {:local "http://localhost"})
+(defmulti check (fn [[_ m]] (:type m)))
 
-(defn check-url [[system-name {url :url success-fn :success-fn} ]]
+(defmethod check :http [[system-name {url :url success-fn :success-fn} ]]
   (let [response (client/get url {:throw-exceptions false :timout 1000})
         pred (or success-fn (http-status 200))
         success (if (pred (:status response) (:body response) ) :pass :fail)
@@ -47,13 +50,22 @@
     (println "response: \"" response "\" success: \"" success "\"")
     (SystemState. system-name, url,  success, response)))
 
+(defmethod check :ssh [[system-name {command :command host :host success-fn :success-fn} ]]
+  (ssh/default-session-options {:strict-host-key-checking :no})
+  (let [response (ssh/ssh host command)
+        [return-code stdout] response
+        success (if (= 0 return-code) :pass :fail)]
+    (println "system name " system-name "fn " success-fn)
+    (println "response: \"" response "\" success: \"" success "\"")
+    (SystemState. system-name, (str host ":" command),  success, response)))
+
 (defn set-systems! [systems]
   (reset! systems-to-check systems)
   (reset! individual-results {})
   (reset! overall-status {}))
 
 (defn check-status []
-  (let [statuses (pmap check-url @systems-to-check)
+  (let [statuses (pmap check @systems-to-check)
         stats-map (into {} (map (juxt :name identity) statuses))]
     (swap! individual-results conj stats-map)
     
@@ -118,3 +130,5 @@
 ;; reading
 ;; http://www.ewernli.com/clojure-agents
 ;; http://justin.harmonize.fm/index.php/2009/03/clojure-agents/
+;; http://info.rjmetrics.com/blog/bid/54114/Parallel-SSH-and-system-monitoring-in-Clojure
+;; https://github.com/hugoduncan/clj-ssh

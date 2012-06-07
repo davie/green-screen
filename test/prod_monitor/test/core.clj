@@ -8,18 +8,18 @@
    (fn [a]  {:status result :body content })
    {:port 0 :join? false}))
 
-(defn check
+(defn do-check
   ([name result]
-     (check name result "" nil))
+     (do-check name result "" nil))
   ([name result content pred]
      ( let [server (dummy-server name result content)
             port (-> server .getConnectors first .getLocalPort)]
-       (set-systems! {name {:url (str "http://localhost:" port) :success-fn pred}})
+       (set-systems! {name {:type :http :url (str "http://localhost:" port) :success-fn pred}})
        (println @systems-to-check)
        (check-status))))
 
 (deftest defaults-to-untested
-  (set-systems! {:not-tested {:url "http://anything"}})
+  (set-systems! {:not-tested {:type :http :url "http://anything"}})
   (check-status)
   (is (= [:not-tested] (map :name (vals @individual-results))))
   (is (= {:state :fail} @overall-status)))
@@ -27,18 +27,18 @@
 ;; hard-coded to failing urls, stub them out
 (deftest goes-red
   (set-systems! {})
-  (check :red 500)
+  (do-check :red 500)
   (is (= [:red] (map :name (vals @individual-results))))
   (is (= {:state :fail} @overall-status)))
 
 ;; this gets appended to the overall state...
 (deftest green
-  (check :green-system 200 )
+  (do-check :green-system 200 )
   (is (= [:green-system] (map :name (vals @individual-results))))
   (is (= {:state :pass} @overall-status)))
 
 (deftest json-status-check
-  (check
+  (do-check
    :green-json 200
    "{\"status\" : \"success\", \"message\" : \"all is well\"}"
    (json-value-matches "status" "success"))
@@ -47,7 +47,7 @@
 
 
 (deftest json-status-check-red
-  (check :red-json 200
+  (do-check :red-json 200
          "{\"status\" : \"fail\", \"message\" : \"its hit the fan\"}"
          (json-value-matches "status" "success"))
   (is (= [:red-json] (map :name (vals @individual-results))))
