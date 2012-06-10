@@ -10,7 +10,8 @@
   (:import java.util.concurrent.Executors)
   (:import java.util.concurrent.TimeUnit)
   (:gen-class :main true)
-  (:use [timbre.core :as timbre :only (trace debug info warn error fatal spy)]))
+  (:use [timbre.core :as timbre :only (trace debug info warn error fatal spy)])
+  (:use [clojure.string :only (trim)]))
 
 ;; :untested, :pass, :fail
 (def overall-status (atom {:state :untested}))
@@ -25,6 +26,10 @@
 (defn http-status [success-status]
   (fn [status content] (= status success-status)))
 
+(defn stdout-matches [pred]
+  (fn [status content]
+    (pred (trim content))))
+
 (defn json-value-matches [k v]
   (info "k " k "v " v)
   (fn [status content] (let [content-map (cheshire/parse-string content)
@@ -35,8 +40,8 @@
 (def systems-to-check
   (atom {:local {:type :http :url "http://127.0.0.1" :success-fn (http-status 200)} 
          :bad {:type :http :url  "http://127.0.0.1/blah" :success-fn (http-status 200)} 
-         :another-ssh {:type :ssh :command "ls" :host "localhost" :success-fn (http-status 200)}
-         :fail-ssh {:type :ssh :command "lss" :host "localhost" :success-fn (http-status 200)}
+         :happy-ssh {:type :ssh :command "echo 'hi'" :host "localhost" :success-fn (stdout-matches #(= "hi" (trim %)))}
+         :fail-ssh {:type :ssh :command "lss" :host "localhost" }
          }))
 
 (defmulti check (fn [[_ m]] (:type m)))
@@ -52,8 +57,9 @@
 (defmethod check :ssh [[system-name {command :command host :host success-fn :success-fn} ]]
   (ssh/default-session-options {:strict-host-key-checking :no})
   (let [response (ssh/ssh host command)
-        [return-code stdout] response
-        success (if (= 0 return-code) :pass :fail)]
+        pred (or success-fn (fn [_ _] true))
+        [return-code std-out] response
+        success (if (and (= 0 return-code) (pred return-code std-out)) :pass :fail)]
     (info "system name " system-name "fn " success-fn)
     (info "response: \"" response "\" success: \"" success "\"")
     (SystemState. system-name, (str host ":" command),  success, response)))
@@ -112,19 +118,21 @@
 
 
 ;; TODO
-;; report the failure message
-;; variable timeouts
-;; shell commands
-;; logging
-;; make the web page pretty
-;; push to web page?
-;; think about transactions - now have two uncoordinated atoms
-;; sort out scheduling in the repl
+;; Report the failure message
+;; Allow config separate from the app
+;; Variable timeouts
+;; Configurable poll frequency
+;; Logging
+;; Make the web page pretty
+;; Push to web page?
+;; Think about transactions - now have two uncoordinated atoms
+;; Sort out scheduling in the repl
 ;;
 ;; DONE
 ;; package as an executable jar - uberjar
 ;; test 
 ;; handle json with success/fail embedded - maybe have a predicate
+;; Shell commands
 
 ;; reading
 ;; http://www.ewernli.com/clojure-agents
