@@ -10,6 +10,7 @@
                  [noir "1.2.2" :exclusions [org.clojure/clojure]]
                  [cheshire "4.0.0"]
                  [clj-ssh "0.3.2"]
+                 [timbre "0.5.1-SNAPSHOT"]
                  ]
   :dev-dependencies [[lein-run "1.0.1-SNAPSHOT" ]]
   :main prod-monitor.core

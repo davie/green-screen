@@ -1,15 +1,16 @@
-(ns prod-monitor.core
+( ns prod-monitor.core
   (:use clojure.test)
   (:use noir.core)
   (:use hiccup.core)
-  (:use hiccup.page-helpers)
+  (:use hiccup.page-helpers)  
   (:require [clj-http.client :as client])
   (:require [noir.server :as server])
   (:require [cheshire.core :as cheshire])
   (:require [clj-ssh.ssh :as ssh])
   (:import java.util.concurrent.Executors)
   (:import java.util.concurrent.TimeUnit)
-  (:gen-class :main true))
+  (:gen-class :main true)
+  (:use [timbre.core :as timbre :only (trace debug info warn error fatal spy)]))
 
 ;; :untested, :pass, :fail
 (def overall-status (atom {:state :untested}))
@@ -25,10 +26,10 @@
   (fn [status content] (= status success-status)))
 
 (defn json-value-matches [k v]
-  (println "k " k "v " v)
+  (info "k " k "v " v)
   (fn [status content] (let [content-map (cheshire/parse-string content)
                              val (get content-map k)]
-                         (println "content: " content " val: " val)
+                         (info "content: " content " val: " val)
                          (= (get content-map k) v))))
 
 (def systems-to-check
@@ -43,11 +44,9 @@
 (defmethod check :http [[system-name {url :url success-fn :success-fn} ]]
   (let [response (client/get url {:throw-exceptions false :timout 1000})
         pred (or success-fn (http-status 200))
-        success (if (pred (:status response) (:body response) ) :pass :fail)
-        ;;success (if (= 200 (-> response :status)) :pass :fail)
-        ]
-    (println "system name " system-name "fn " success-fn)
-    (println "response: \"" response "\" success: \"" success "\"")
+        success (if (pred (:status response) (:body response) ) :pass :fail)]
+    (info "system name " system-name "fn " success-fn)
+    (info "response: \"" response "\" success: \"" success "\"")
     (SystemState. system-name, url,  success, response)))
 
 (defmethod check :ssh [[system-name {command :command host :host success-fn :success-fn} ]]
@@ -55,8 +54,8 @@
   (let [response (ssh/ssh host command)
         [return-code stdout] response
         success (if (= 0 return-code) :pass :fail)]
-    (println "system name " system-name "fn " success-fn)
-    (println "response: \"" response "\" success: \"" success "\"")
+    (info "system name " system-name "fn " success-fn)
+    (info "response: \"" response "\" success: \"" success "\"")
     (SystemState. system-name, (str host ":" command),  success, response)))
 
 (defn set-systems! [systems]
@@ -73,7 +72,7 @@
           state (when (seq all)
                   (if (seq failures) :fail :pass))]
       (swap! overall-status conj {:state state})
-      (println @overall-status)
+      (info @overall-status)
       all)))
 
 (defn start []
@@ -85,7 +84,7 @@
   (server/start 8080))
 
 (defn -main []
-  (println "hi")
+  (info "starting")
   (start-web)
   (start))
 
@@ -113,10 +112,10 @@
 
 
 ;; TODO
+;; report the failure message
 ;; variable timeouts
 ;; shell commands
 ;; logging
-;; report the failure message
 ;; make the web page pretty
 ;; push to web page?
 ;; think about transactions - now have two uncoordinated atoms
