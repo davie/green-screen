@@ -51,6 +51,7 @@
          "{\"status\" : \"fail\", \"message\" : \"its hit the fan\"}"
          (json-value-matches "status" "success"))
   (is (= [:red-json] (map :name (vals @individual-results))))
+  (is (= (-> @individual-results :red-json :status :description) "content: fail expected: success"))
   (is (= {:state :fail} @overall-status)))
 
 ;; also need to test failing to parse = error
